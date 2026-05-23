@@ -28,7 +28,10 @@ Output artifacts:
 .pio/build/lilygo_t_embed_cc1101/firmware.bin
 .pio/build/lilygo_t_embed_cc1101/bootloader.bin
 .pio/build/lilygo_t_embed_cc1101/partitions.bin
+.pio/build/lilygo_t_embed_cc1101/ck42x-t-embed-passvault-merged.bin
 ```
+
+The PlatformIO environment is pinned to the `pioarduino` ESP32 platform because the current upstream PlatformIO `espressif32` package does not include the 16MB flash / 8MB PSRAM ESP32-S3 board ID used here.
 
 ## Flash
 
@@ -38,7 +41,13 @@ Probe the chip first. Do not flash if the board is not ESP32-S3.
 pio run -t upload
 ```
 
-For Windows-hosted devices from WSL, use PlatformIO/esptool against the Windows COM port only after confirming the port belongs to the T-Embed.
+For Windows-hosted devices from WSL, use the guarded PowerShell helper. It probes first and refuses to flash anything other than ESP32-S3:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows_flash.ps1 -Port COM11
+```
+
+If the board is running firmware that does not expose a serial port, put the T-Embed into ESP32-S3 ROM bootloader mode, then rerun the helper.
 
 ## Serial command shell
 
@@ -87,7 +96,7 @@ The screen masks passwords. Serial `SHOW` is intentionally explicit and should b
 
 There is no single official "T-Embed app catalog" equivalent to the Flipper app catalog. Practical targets:
 
-1. Public GitHub repo + GitHub Release with `firmware.bin`, `bootloader.bin`, `partitions.bin`, and SHA-256 checksums.
+1. Public GitHub repo + GitHub Release with `firmware.bin`, `bootloader.bin`, `partitions.bin`, optional merged image, and SHA-256 checksums.
 2. Bruce App Store is for BruceJS scripts/themes, not standalone replacement firmware. A tiny BruceJS launcher/info card can be submitted later, but this firmware itself does not install as a Bruce app.
 3. LILYGO community/forum post linking the repo and release.
 4. Optional M5Burner-style publication is only relevant to M5Stack devices/accounts, not the LilyGO T-Embed hardware path.
