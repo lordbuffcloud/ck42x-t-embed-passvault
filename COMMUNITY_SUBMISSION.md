@@ -11,6 +11,7 @@ This is a small field utility for test credentials, labs, demos, and controlled 
 ## Links
 
 - Source: https://github.com/lordbuffcloud/ck42x-t-embed-passvault
+- Prerelease firmware: https://github.com/lordbuffcloud/ck42x-t-embed-passvault/releases/tag/v0.1.0
 - Original Flipper app inspiration: https://github.com/lordbuffcloud/flipper-ck42x-passvault
 - CK42X: https://ck42x.com
 
@@ -27,6 +28,8 @@ It is a standalone ESP32-S3 firmware with:
 - T-Embed screen/encoder selection
 - explicit USB HID password typing only after confirmation
 
+Release: https://github.com/lordbuffcloud/ck42x-t-embed-passvault/releases/tag/v0.1.0
+
 This is early MVP/community-test firmware, not an audited password manager. I would appreciate hardware feedback from other T-Embed owners before making stronger security claims.
 
 ## Community targets checked
@@ -34,3 +37,8 @@ This is early MVP/community-test firmware, not an audited password manager. I wo
 - Bruce App Store: useful for BruceJS scripts/themes, but this is standalone replacement firmware, not a BruceJS app.
 - LILYGO community/forum: appropriate for a repo/release announcement.
 - GitHub Releases: appropriate primary distribution surface.
+- M5Burner: not a fit for this hardware/release path unless the project is ported to an M5Stack device profile.
+
+## Submission status
+
+Prepared only. Do not post this publicly until Cris explicitly approves the outbound community message.
