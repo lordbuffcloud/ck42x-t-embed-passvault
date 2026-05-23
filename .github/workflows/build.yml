@@ -1,0 +1,32 @@
+name: Build T-Embed firmware
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PlatformIO
+        run: python3 -m pip install --upgrade platformio esptool
+      - name: Build firmware
+        run: pio run
+      - name: Merge browser/manual flash image
+        run: python3 scripts/merge_firmware.py
+      - name: Checksums
+        run: |
+          cd .pio/build/lilygo_t_embed_cc1101
+          sha256sum firmware.bin bootloader.bin partitions.bin ck42x-t-embed-passvault-merged.bin > SHA256SUMS.txt
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ck42x-t-embed-passvault-firmware
+          path: |
+            .pio/build/lilygo_t_embed_cc1101/firmware.bin
+            .pio/build/lilygo_t_embed_cc1101/bootloader.bin
+            .pio/build/lilygo_t_embed_cc1101/partitions.bin
+            .pio/build/lilygo_t_embed_cc1101/ck42x-t-embed-passvault-merged.bin
+            .pio/build/lilygo_t_embed_cc1101/SHA256SUMS.txt
