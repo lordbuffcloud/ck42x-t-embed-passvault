@@ -1,3 +1,7 @@
+/* ⬡ CK42X · ck42x.com
+ * passvault: pin-gated aes-256-gcm password vault with usb hid typing for the lilygo t-embed esp32-s3
+ * gold on black. sting once.
+ */
 #include <Arduino.h>
 #include <Preferences.h>
 #include <TFT_eSPI.h>
@@ -11,6 +15,7 @@ namespace {
 
 constexpr const char* kTag = "CKPV";
 constexpr const char* kVersion = "0.1.0";
+// at most 24 entries; field caps count buffer bytes incl. the nul, so 31/47/71 usable chars.
 constexpr uint8_t kMaxEntries = 24;
 constexpr size_t kAccountLen = 32;
 constexpr size_t kUsernameLen = 48;
@@ -57,11 +62,13 @@ int lastA = HIGH;
 int lastButton = HIGH;
 uint32_t lastButtonChange = 0;
 
+// WHY: volatile byte writes keep the optimizer from eliding the wipe as a dead store.
 void secureZero(void* ptr, size_t len) {
     volatile uint8_t* p = static_cast<volatile uint8_t*>(ptr);
     while(len--) *p++ = 0;
 }
 
+// copies at most len-1 bytes and always nul-terminates; len == 0 is a no-op.
 void safeCopy(char* dst, size_t len, const String& src) {
     if(len == 0) return;
     size_t n = min(len - 1, static_cast<size_t>(src.length()));
@@ -69,6 +76,7 @@ void safeCopy(char* dst, size_t len, const String& src) {
     dst[n] = '\0';
 }
 
+// WHY: a tab or newline inside a field would corrupt the tab-separated vault format.
 void sanitize(String& s) {
     s.trim();
     s.replace("\t", " ");
@@ -117,6 +125,7 @@ void drawStatus(const String& line1, const String& line2 = "", const String& lin
     tft.print(F("Serial: HELP | ck42x.com"));
 }
 
+// SAFETY: passwords render as '*' and the pin is never drawn; plaintext exits only via SHOW or TYPE.
 void drawVault() {
     tft.fillScreen(TFT_BLACK);
     tft.setTextSize(1);
@@ -180,6 +189,8 @@ void sha256Once(const uint8_t* data, size_t len, uint8_t out[32]) {
     mbedtls_sha256_free(&ctx);
 }
 
+// domain-separated iterated sha-256: 2048 hashes total, pin truncated to 48 bytes.
+// TRAP: this is not pbkdf2 or argon2; 2048 sha-256 rounds is cheap to attack offline.
 void deriveKey(const String& pin, const uint8_t salt[kSaltLen], uint8_t out[kKeyLen]) {
     static const char domain[] = "CK42X-T-Embed-PassVault-KDF-v1";
     uint8_t block[128];
@@ -204,6 +215,7 @@ void deriveKey(const String& pin, const uint8_t salt[kSaltLen], uint8_t out[kKey
     secureZero(roundBuf, sizeof(roundBuf));
 }
 
+// one tab-separated account/username/password line per entry; this is the plaintext saveVault encrypts.
 String serializeEntries() {
     String out;
     out.reserve(entryCount * 96 + 8);
@@ -224,6 +236,7 @@ void clearEntries() {
     selected = 0;
 }
 
+// TRAP: returns true unconditionally; malformed lines and entries beyond 24 are silently dropped.
 bool parseEntries(const uint8_t* data, size_t len) {
     clearEntries();
     size_t start = 0;
@@ -257,6 +270,8 @@ void randomBytes(uint8_t* dst, size_t len) {
     }
 }
 
+// INVARIANT: each save draws a fresh 12-byte nonce; aes-256-gcm with a 16-byte tag.
+// blob layout: magic(8) | salt(16) | nonce(12) | tag(16) | ciphertext; rejects plaintext over 4096 bytes.
 bool saveVault() {
     if(!keyReady) return false;
     String plain = serializeEntries();
@@ -303,6 +318,7 @@ bool saveVault() {
     return rc == 0;
 }
 
+// the gcm tag check is the pin check: a wrong pin fails decryption and wipes the derived key.
 bool loadVaultWithPin(const String& pin) {
     size_t blobLen = prefs.getBytesLength("vault");
     if(blobLen < kMagicLen + kSaltLen + kNonceLen + kTagLen) return false;
@@ -362,6 +378,8 @@ bool loadVaultWithPin(const String& pin) {
     return ok;
 }
 
+// rejects pins under 4 chars; generates a fresh salt and saves an empty vault.
+// SAFETY: the pin is accepted over serial only and never rendered on the tft.
 bool createVault(const String& pin) {
     if(pin.length() < 4) return false;
     clearEntries();
@@ -372,6 +390,9 @@ bool createVault(const String& pin) {
     return saveVault();
 }
 
+// special-cased presets: long (4 words + 2-digit suffix), memorable (16 chars), nosymbol (no symbols).
+// TRAP: 'strict' is advertised in HELP but has no branch; it falls through to the default 18-char path.
+// TRAP: esp_random() % n introduces modulo bias in every character pick.
 String generatedPassword(const String& preset) {
     const char* lower = "abcdefghijkmnopqrstuvwxyz";
     const char* upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -417,6 +438,7 @@ int findEntry(const String& account) {
     return -1;
 }
 
+// case-insensitive account match; rejects locked vault, empty account/password, or a 25th entry.
 bool upsertEntry(const String& account, const String& username, const String& password) {
     if(!unlocked || !keyReady || !account.length() || !password.length()) return false;
     int idx = findEntry(account);
@@ -444,6 +466,7 @@ void listEntries() {
     }
 }
 
+// SAFETY: after a 3000 ms countdown the password is typed into whatever window owns usb focus.
 void typePassword(uint8_t idx) {
     if(!unlocked || idx >= entryCount) {
         Serial.println(F("ERR invalid or locked"));
@@ -457,6 +480,7 @@ void typePassword(uint8_t idx) {
     drawVault();
 }
 
+// INVARIANT: a failed save rolls back the in-ram delete so the entry is not lost.
 void deleteEntry(uint8_t idx) {
     if(!unlocked || idx >= entryCount) {
         Serial.println(F("ERR invalid or locked"));
@@ -481,6 +505,7 @@ void deleteEntry(uint8_t idx) {
     drawVault();
 }
 
+// SAFETY: SHOW prints the plaintext password to serial; anyone on the usb port can read it.
 void processCommand(String line) {
     line.trim();
     if(!line.length()) return;
@@ -573,6 +598,7 @@ void processCommand(String line) {
     drawVault();
 }
 
+// TRAP: input lines over 240 chars are silently truncated, not rejected.
 void pollSerial() {
     while(Serial.available()) {
         char c = Serial.read();
@@ -586,6 +612,8 @@ void pollSerial() {
     }
 }
 
+// first press arms; a second press within 5000 ms types the selection. rotation or expiry disarms.
+// button edges are debounced at 60 ms.
 void pollEncoder() {
     int a = digitalRead(kEncoderA);
     if(a != lastA && a == LOW && unlocked && entryCount > 0) {

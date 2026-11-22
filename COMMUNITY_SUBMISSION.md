@@ -1,5 +1,7 @@
 # Community submission draft
 
+gold on black. sting once.
+
 ## Short description
 
 CK42X T-Embed PassVault is an open-source LilyGO T-Embed / T-Embed CC1101 firmware that provides a PIN-gated encrypted password vault, generated passwords, and explicit USB HID password typing.

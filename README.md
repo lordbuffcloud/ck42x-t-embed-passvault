@@ -4,6 +4,8 @@ CK42X PassVault firmware for the LilyGO T-Embed / T-Embed CC1101 ESP32-S3 device
 
 This is a standalone ESP32-S3 port of [`flipper-ck42x-passvault`](https://github.com/lordbuffcloud/flipper-ck42x-passvault): a small field password vault with generated passwords, PIN-gated encrypted local storage, and explicit USB HID password typing.
 
+gold on black. sting once.
+
 ## Status
 
 MVP firmware for hardware bring-up and community testing.
